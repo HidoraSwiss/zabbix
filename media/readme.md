@@ -2,7 +2,7 @@
 
 Use it with : https://www.zabbix.com/fr/integrations/pagerduty
 
-Tp change summary fild on pagerduty event, you can modify :
+To change summary feild on pagerduty event, you can modify :
 
           fields.payload = {
               summary: params.hostname + " -- " + params.eventname,
