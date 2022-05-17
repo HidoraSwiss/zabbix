@@ -4,7 +4,7 @@ Use it with : https://www.zabbix.com/fr/integrations/pagerduty
 
 Replace script in your pager duty media with this one.
 
-  ![media_script](media_script.png "media_script")
+  ![script_config](screenshots/script_config.png "script_config")
 
 
 To change summary feild on pagerduty event, you can modify :
@@ -16,5 +16,5 @@ To change summary feild on pagerduty event, you can modify :
           };
           
           
-  ![event_example](event_example.png "event_example")
+  ![event_example](screenshots/pager_event.png "event_example")
   
