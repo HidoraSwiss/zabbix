@@ -1,0 +1,137 @@
+try {
+
+    var params = JSON.parse(value),
+        req = new HttpRequest(),
+        fields = {},
+        resp = '';
+
+    // Correspondence between the PagerDuty and Zabbix severity level
+    var severityMapping = [
+        'info',    // Not classified
+        'info',    // Information
+        'warning', // Warning
+        'warning', // Average
+        'error',   // High
+        'critical' // Disaster
+    ];
+
+    if (!severityMapping[params.severity]) {
+        params.severity = '0';
+    }
+
+    if (typeof params.HTTPProxy === 'string' && params.HTTPProxy.trim() !== '') {
+        req.setProxy(params.HTTPProxy);
+    }
+
+    if (isNaN(parseInt(params.eventid)) || params.eventid < 1) {
+        throw 'incorrect value for variable "eventid". The value must be a positive number.';
+    }
+    if (params.eventname.length < 1) {
+        throw 'incorrect value for variable "eventname". The value must be a non-empty string.';
+    }
+    if (isNaN(parseInt(params.severity)) || (params.severity < 0 && params.severity > 5)) {
+        throw 'incorrect value for variable "severity". The value must be a number 0..5.';
+    }
+
+    if ([0, 1, 2, 3].indexOf(parseInt(params.event_source)) === -1) {
+        throw 'Incorrect "event_source" parameter given: "' + params.event_source + '".\nMust be 0-3.';
+    }
+    // Check {EVENT.VALUE} for trigger-based and internal events.
+    if (params.eventvalue !== '0' && params.eventvalue !== '1'
+        && (params.event_source === '0' || params.event_source === '3')) {
+        throw 'Incorrect "eventvalue" parameter given: "' + params.eventvalue + '".\nMust be 0 or 1.';
+    }
+
+    if (params.event_source === '0') {
+        if (params.hostname.length < 1) {
+            throw 'incorrect value for variable "hostname". The value must be a non-empty string.';
+        }
+        if (isNaN(parseInt(params.triggerid)) || params.triggerid < 1) {
+            throw 'incorrect value for variable "triggerid". The value must be a positive number.';
+        }
+        if (params.eventack != 'Yes' && params.eventack != 'No') {
+            throw 'incorrect value for variable "eventack". The value must be Yes or No.';
+        }
+        if (isNaN(parseInt(params.eventupdate)) || (params.eventupdate < 0 || params.eventupdate > 1)) {
+            throw 'incorrect value for variable "eventupdate". The value must be 0 or 1.';
+        }
+    }
+
+
+
+    req.addHeader('Content-Type: application/json');
+
+    fields.routing_key = params.token;
+    fields.dedup_key = params.eventid;
+
+    if (((params.eventvalue == 1) && (params.eventupdate == 0)) || params.event_source !== '0') {
+        fields.event_action = 'trigger';
+        fields.payload = {
+            summary: params.hostname + " -- " + params.eventname,
+            source: (params.event_source === '1') ? 'Discovery' : params.hostname + ' : ' + params.hostip,
+            severity: severityMapping[params.severity],
+        };
+        
+        if (params.event_source === '0') {
+            fields.payload.custom_details = {
+                'Event date': params.eventdate,
+                'Event time': params.eventtime,
+                'Trigger description': params.triggerdesc,
+                'Trigger opdata': params.triggeropdata,
+                'Event tags': params.eventtags,
+                'Event host': params.hostname,
+                'Event host ip': params.hostip
+            };
+            fields.links = [{
+                href: params.url + '/tr_events.php?triggerid=' + params.triggerid + '&eventid=' + params.eventid,
+                text: 'Event link'
+            }];
+        }
+        else {
+            fields.payload.custom_details = {
+                'Alert message': params.alert_message
+            };
+        }
+
+        fields.client = 'Zabbix';
+        fields.client_url = params.url;
+    }
+    else if ((params.eventvalue == 1) && (params.eventupdate == 1) && (params.eventack == 'Yes'))
+        fields.event_action = 'acknowledge';
+    else if (params.eventvalue == 0)
+        fields.event_action = 'resolve';
+    else
+        throw 'incorrect values. Update message without ack will not be sent.';
+
+    Zabbix.log(4, '[PagerDuty Webhook] Sending request:' + JSON.stringify(fields));
+    resp = req.post('https://events.pagerduty.com/v2/enqueue',
+        JSON.stringify(fields)
+    );
+    Zabbix.log(4, '[PagerDuty Webhook] Receiving response:' + resp);
+
+    try {
+        resp = JSON.parse(resp);
+    }
+    catch (error) {
+        throw 'incorrect response. PagerDuty returned a non-JSON object.';
+    }
+
+    if (req.getStatus() != 202) {
+        if (typeof resp === 'object' && typeof resp.errors === 'object' && typeof resp.errors[0] === 'string') {
+            throw resp.errors[0];
+        }
+        else {
+            throw 'Unknown error.';
+        }
+    }
+
+    if (resp.status != 'success') {
+        throw 'Unknown error.';
+    }
+
+    return 'OK';
+}
+catch (error) {
+    Zabbix.log(3, '[PagerDuty Webhook] Notification failed : ' + error);
+    throw 'PagerDuty notification failed : ' + error;
+}
