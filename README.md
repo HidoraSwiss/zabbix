@@ -1,2 +1,2 @@
-# zabbix
-zabbix
+# zabbix repo for config and tips
+
