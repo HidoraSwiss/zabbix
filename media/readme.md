@@ -2,6 +2,11 @@
 
 Use it with : https://www.zabbix.com/fr/integrations/pagerduty
 
+Replace script in your pager duty media with this one.
+
+  ![media_script](media_script.png "media_script")
+
+
 To change summary feild on pagerduty event, you can modify :
 
           fields.payload = {
@@ -11,4 +16,5 @@ To change summary feild on pagerduty event, you can modify :
           };
           
           
-  ![pager_event](2022-05-17_16-03.png "pager_event")
+  ![event_example](event_example.png "event_example")
+  
