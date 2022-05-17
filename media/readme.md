@@ -9,3 +9,6 @@ To change summary feild on pagerduty event, you can modify :
               source: (params.event_source === '1') ? 'Discovery' : params.hostname + ' : ' + params.hostip,
               severity: severityMapping[params.severity],
           };
+          
+          
+  ![pager_event](2022-05-17_16-03.png "pager_event")
